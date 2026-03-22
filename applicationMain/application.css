@@ -1,0 +1,123 @@
+/* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
+.root {
+	-fx-background-color: #181c1f;
+}
+
+.button {
+	-fx-background-radius: 15;
+	-fx-background-color: #23272a;
+	-fx-text-fill: #FFFFFF
+}
+
+.button:hover {
+	-fx-background-color: #d93901;
+}
+
+.text-field{
+	-fx-background-color: #2a3236;
+	-fx-text-fill: #FFFFFF;
+	-fx-prompt-text-fill: #8499a4;
+	-fx-background-radius: 15;
+	-fx-border-color: #181c1f;
+	-fx-border-width: 2px;
+	
+}
+
+.text-field:focused {
+	-fx-border-color: #8499a4;
+	-fx-background-color: #333d43;
+	-fx-border-width: 2px;
+	-fx-border-radius: 15;
+}
+
+.label {
+	-fx-text-fill: #8499a4;
+}
+
+.errorMessage {
+	-fx-text-fill: #ff4f40;
+}
+
+.root.popup {
+	-fx-background-color: #123ACB;
+	-fx-text-fill: #FFFFFF;
+}
+
+.combo-box-base {
+	-fx-background-color: #333d43;
+}
+
+.combo-box .list-cell {
+	-fx-text-fill: #FFFFFF;
+}
+
+.combo-box-popup .list-cell {
+	-fx-background-color: #333d43;
+	-fx-text-fill: #FFFFFF;
+}
+
+.combo-box-popup .list-cell:focused {
+	-fx-background-color: #2a3236;
+	-fx-text-fill: #FFFFFF;
+}
+
+.combo-box-popup .list-cell:hover {
+	-fx-text-fill: #ff4f40;
+	-fx-background-color: #2a3236;
+}
+
+.alertStyle {
+	-fx-background-color: #2a3236;
+}
+
+.alertStyle .combo-box {
+	-fx-text-fill: #FFFFFF;
+}
+
+.alertStyle .combo-box .list-cell {
+	-fx-text-fill: #FFFFFF;
+}
+
+.alertStyle:header .header-panel {
+	-fx-background-color: #181c1f;
+}
+
+.alertStyle:header .header-panel .label {
+	-fx-background-color: #181c1f;
+	-fx-text-fill: #FFFFFF;
+}
+
+.alertStyle-error:header .header-panel {
+	-fx-background-color: #181c1f;
+}
+
+.alertStyle-error:header .header-panel .label {
+	-fx-background-color: #181c1f;
+	-fx-text-fill: #ff4f40;
+}
+
+.alertStyle .label {
+	-fx-background-color: #2a3236;
+	-fx-text-fill: #FFFFFF;
+}
+
+.scroll-pane {
+    -fx-background: #181c1f;
+    -fx-background-color: #181c1f;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: #181c1f;
+}
+
+.post-feed-vbox {
+    -fx-background-color: #181c1f;
+}
+
+/*
+ * red ff4f40
+ * green 046d0c
+ * orange d93901
+ * sample 2a3236
+ * preview button? 23272a
+ */
