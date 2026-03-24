@@ -172,6 +172,8 @@ public class ViewAdminHome {
 	protected static Alert inviteCodeAlert;
 	protected static Alert deleteInviteConfirm;
 	
+	protected static ComboBox<String> threadChoice;
+
 	
 	/*-*******************************************************************************************
 
@@ -318,6 +320,39 @@ public class ViewAdminHome {
 		alertDeleteConfirm.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
 
 	    
+     	threadChoice = new ComboBox<>();
+		threadChoice.setLayoutX(285);
+		threadChoice.setLayoutY(275);
+		threadChoice.getSelectionModel().select(0);
+		List<String> tlist = new ArrayList<String>();
+		tlist.add("General");
+		tlist.add("My Posts");
+		tlist.add("Quizzes");
+		tlist.add("Homework Help");
+		threadChoice.setItems(FXCollections.observableArrayList(tlist));
+		threadChoice.getSelectionModel().select(0);
+		
+		// Updates display to show posts from the chosen thread (the default is general)
+		threadChoice.setOnAction((_) -> {
+			String selectedItem = threadChoice.getValue();
+			if (selectedItem != null && selectedItem.equals("General")) {
+	     		refreshPostFeed(postFeed, "", ""); 
+
+				
+			} else if (selectedItem != null && selectedItem.equals("Quizzes")) {
+				
+	     		refreshPostFeed(postFeed, "", "Quizzes"); 
+
+			} else if (selectedItem != null && selectedItem.equals("Homework Help")) {
+	     		refreshPostFeed(postFeed, "", "Homework Help"); 
+
+				
+			} else if (selectedItem != null && selectedItem.equals("My Posts")) {
+	     		refreshPostFeed(postFeed, "", ""); 
+
+				
+			}
+		});
 		
 	    
 	    inviteCodeAlert = new Alert(AlertType.WARNING);
@@ -403,7 +438,7 @@ public class ViewAdminHome {
 		setupTextUI(text_searchBar, "Arial", 16, 300, Pos.BASELINE_LEFT, 450, 270, true);
 		text_searchBar.setPromptText("Search posts by title or content");
 
-		setupButtonUI(button_CreatePost, "Dialog", 16, 150, Pos.CENTER, 285, 270);
+		setupButtonUI(button_CreatePost, "Dialog", 18, 200, Pos.CENTER, width - 20 - 200, 540);
 		button_CreatePost.setOnAction((_) -> showCreatePostDialog());
 		button_CreatePost.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
@@ -413,7 +448,7 @@ public class ViewAdminHome {
 		scrollFeed.setPrefSize(475, 200);
 		scrollFeed.setFitToWidth(true);
 
-		refreshPostFeed(postFeed, ""); 
+		refreshPostFeed(postFeed, "", ""); 
 
 		// listener for search so it can not input over 500
 		text_searchBar.textProperty().addListener((obs, oldVal, newVal) -> {
@@ -422,7 +457,7 @@ public class ViewAdminHome {
 		        query = newVal.substring(0, 500);
 		        text_searchBar.setText(query);
 		    }
-		    refreshPostFeed(postFeed, newVal); 
+		    refreshPostFeed(postFeed, newVal, ""); 
 		});
 		
 		// This is the end of the GUI initialization code
@@ -440,6 +475,7 @@ public class ViewAdminHome {
     		button_DeleteUser,
     		button_ListUsers,
     		button_AddRemoveRoles,
+    		threadChoice,
     		line_Separator4, 
     		text_searchBar,
     		scrollFeed,
@@ -690,10 +726,16 @@ public class ViewAdminHome {
 	 * 
 	 * <p> Description: Refreshes the post feed of the user. This is called when something is done to the post list like deleting or adding posts.</p>
 	 */
-	private void refreshPostFeed(VBox container, String keyword) {
+	private void refreshPostFeed(VBox container, String keyword, String thread) {
 	    container.getChildren().clear();
-	    List<post> results = theDatabase.searchPost(keyword);
-
+	    List<post> results;
+	    if (threadChoice.getValue() == "My Posts") {
+	    	results = theDatabase.searchPost(theUser.getUserName());
+	    } else {
+	    	
+	    	results = theDatabase.searchPost(keyword, thread);
+	    }
+	    
 	    for (post p : results) {
 	        String displayHeader = p.getDeleted() ? "(this post has been deleted)" : p.getTitle();
 	        Button button_post = new Button(displayHeader + "\nBy: " + p.getAuthor());
@@ -732,6 +774,15 @@ public class ViewAdminHome {
 	    contentCount.setStyle("-fx-text-fill: gray;");
 	    postContent.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 	    
+	    ComboBox<String> pickThread = new ComboBox<>();
+		pickThread.setLayoutX(width/2 - 50);
+		pickThread.setLayoutY(55);
+		List<String> list = new ArrayList<String>();	
+		list.add("My Posts");
+		list.add("General");
+		pickThread.setItems(FXCollections.observableArrayList(list));
+		pickThread.getSelectionModel().select(0);
+	    
 	    // keeps the input of content <= 32
 	    postTitle.textProperty().addListener((_, _, newValue) -> {
 	        if (newValue.length() > 32) {postTitle.setText(newValue.substring(0, 32));}
@@ -759,8 +810,8 @@ public class ViewAdminHome {
 	        } else if (content.length() > 500) {
 	        	showValidationError("Post is too long! (Max 500 characters)");
 	        } else {
-	        	theDatabase.createPost(theUser.getUserName(), postTitle.getText(), postContent.getText());
-	        	refreshPostFeed(postFeed, "");
+	        	theDatabase.createPost(theUser.getUserName(), postTitle.getText(), pickThread.getValue(), postContent.getText());
+	        	refreshPostFeed(postFeed, "", "");
 	        	dialog.close();
 	        }
 	    });
@@ -823,7 +874,7 @@ public class ViewAdminHome {
 	                //set the objects value to deleted as well 
 	                p.setDeleted(true);
 	                stage.close();
-	                refreshPostFeed(postFeed, "");
+	                refreshPostFeed(postFeed, "", "");
 	            }
 	        });
 	        buttons.getChildren().add(button_Delete);
@@ -898,7 +949,7 @@ public class ViewAdminHome {
 				}
 	            
 	            stage.close();
-	            refreshPostFeed(postFeed, "");
+	            refreshPostFeed(postFeed, "", "");
 	        });
 
 	        buttons.getChildren().add(button_update);

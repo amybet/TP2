@@ -137,7 +137,8 @@ public class Database {
 	    	    + "postID INT AUTO_INCREMENT PRIMARY KEY, " 
 	    	    + "author VARCHAR(255), " 
 	    	    + "title VARCHAR(255), " 
-	    	    + "content TEXT, " 
+	    	    + "thread VARCHAR(255),"
+	    	    + "content TEXT, "
 	    	    + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " 
 	    	    + "isDeleted BOOLEAN DEFAULT FALSE)";
 	    statement.execute(createPostsTable);
@@ -471,12 +472,13 @@ public class Database {
 	 * 
 	 * @param String contents : actual text of the new post, has to be <= 500 characters
 	 */
-	public void createPost(String author, String title, String content) {
-		String query = "INSERT INTO posts (author, title, content) VALUES (?,?,?)";
+	public void createPost(String author, String title, String thread, String content) {
+		String query = "INSERT INTO posts (author, title, thread, content) VALUES (?,?,?,?)";
 		try(PreparedStatement pstmt = connection.prepareStatement(query)){
 			pstmt.setString(1, author);
 			pstmt.setString(2, title);
-			pstmt.setString(3, content);
+			pstmt.setString(3, thread);
+			pstmt.setString(4, content);
 			pstmt.executeUpdate();
 		} catch(SQLException e) {
 			e.printStackTrace();
@@ -538,12 +540,14 @@ public class Database {
 	 *
 	 * @return List<post> result : an arraylist of the most similar posts to the search input
 	 */
-	public List<post> searchPost(String search){
+	public List<post> searchPost(String search, String thread){
 		List<post> result = new ArrayList<>();
-		String query = "SELECT * FROM posts WHERE (title LIKE ? OR content LIKE ?)";
+		String query = "SELECT * FROM posts WHERE (title LIKE ? OR content LIKE ?) AND (thread LIKE ?)";
 		try(PreparedStatement pstmt = connection.prepareStatement(query)){
 			pstmt.setString(1, "%" + search + "%");
 			pstmt.setString(2, "%" + search + "%");
+			pstmt.setString(3, "%" + thread + "%");
+
 			ResultSet rs = pstmt.executeQuery();
 			while(rs.next()) {
 				result.add(new post(
@@ -551,6 +555,7 @@ public class Database {
 						rs.getString("author"), 
 						rs.getString("title"),
                        rs.getString("content"), 
+                       rs.getString("thread"),
                        rs.getString("timestamp"), 
                        rs.getBoolean("isDeleted")));
 			}
@@ -561,6 +566,42 @@ public class Database {
 		return result;
 	}
 	
+	/*******
+	 * <p> Method: List<post> searchPost(String search) </p>
+	 * 
+	 * <p> Description: This method is called whenever a new character is typed into the search bar,
+	 * It scans through all posts titles and contents and compares it to the inputed string. It displays
+	 * the most similar results in the list
+	 * </p>
+	 * 
+	 * @param String search : the string that is being searched in titles and contents, updated every character input
+	 *
+	 * @return List<post> result : an arraylist of the most similar posts to the search input
+	 */
+	public List<post> searchPost(String author){
+		List<post> result = new ArrayList<>();
+		String query = "SELECT * FROM posts WHERE author LIKE ?";
+		try(PreparedStatement pstmt = connection.prepareStatement(query)){
+			pstmt.setString(1, "%" + author + "%");
+			
+
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()) {
+				result.add(new post(
+						rs.getInt("postID"),
+						rs.getString("author"), 
+						rs.getString("title"),
+                       rs.getString("content"), 
+                       rs.getString("thread"),
+                       rs.getString("timestamp"), 
+                       rs.getBoolean("isDeleted")));
+			}
+			pstmt.execute();
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
 	
 	/*******
 	 * <p> Method: void createReply(int parentID, String author, String content) </p>

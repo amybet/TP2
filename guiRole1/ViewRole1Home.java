@@ -1,10 +1,12 @@
 package guiRole1;
 
+import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -106,6 +108,8 @@ public class ViewRole1Home {
 	protected static Pane theRootPane;			// The Pane that holds all the GUI widgets
 	protected static User theUser;				// The current logged in User
 	
+	protected static ComboBox<String> threadChoice;
+
 
 	private static Scene theViewRole1HomeScene;	// The shared Scene each invocation populates
 	protected static final int theRole = 2;		// Admin: 1; Role1: 2; Role2: 3
@@ -153,7 +157,7 @@ public class ViewRole1Home {
 		applicationMain.FoundationsMain.activeHomePage = theRole;
 		
 		label_UserDetails.setText("User: " + theUser.getUserName());
-		theView.refreshPostFeed(theView.postFeed, "");
+		theView.refreshPostFeed(theView.postFeed, "", "");
 				
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Student Home Page");
@@ -197,7 +201,7 @@ public class ViewRole1Home {
 		label_UserDetails.setText("User: " + theUser.getUserName());
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 		
-		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
+		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 50);
 		button_UpdateThisUser.setOnAction((_) -> {ControllerRole1Home.performUpdate(); });
 		
 		// GUI Area 2
@@ -209,24 +213,62 @@ public class ViewRole1Home {
         setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
         button_Logout.setOnAction((_) -> {ControllerRole1Home.performLogout(); });
         
-        setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
+        setupButtonUI(button_Quit, "Dialog", 18, 200, Pos.CENTER, width-200-20, 540);
         button_Quit.setOnAction((_) -> {ControllerRole1Home.performQuit(); });
         
      	// GUI area 4 : Posts
-     	setupTextUI(text_searchBar, "Arial", 16, 300, Pos.BASELINE_LEFT, 310, 45, true);
+     	setupTextUI(text_searchBar, "Arial", 16, 280, Pos.BASELINE_LEFT, 310, 50, true);
      	text_searchBar.setPromptText("Search posts by title or content");
 
-     	setupButtonUI(button_CreatePost, "Dialog", 16, 150, Pos.CENTER, 155, 45);
+     	setupButtonUI(button_CreatePost, "Dialog", 18, 250, Pos.CENTER, 300, 540);
      	button_CreatePost.setOnAction((_) -> showCreatePostDialog());
      	button_CreatePost.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
+     	threadChoice = new ComboBox<>();
+		threadChoice.setLayoutX(150);
+		threadChoice.setLayoutY(55);
+		threadChoice.getSelectionModel().select(0);
+		List<String> list = new ArrayList<String>();
+		list.add("General");
+		list.add("My Posts");
+		list.add("Quizzes");
+		list.add("Homework Help");
+		threadChoice.setItems(FXCollections.observableArrayList(list));
+		threadChoice.getSelectionModel().select(0);
+		
+		// Updates display to show posts from the chosen thread (the default is general)
+		threadChoice.setOnAction((_) -> {
+			String selectedItem = threadChoice.getValue();
+			if (selectedItem != null && selectedItem.equals("General")) {
+	     		refreshPostFeed(postFeed, "", ""); 
+
+				
+			} else if (selectedItem != null && selectedItem.equals("Quizzes")) {
+				
+	     		refreshPostFeed(postFeed, "", "Quizzes"); 
+
+			} else if (selectedItem != null && selectedItem.equals("Homework Help")) {
+	     		refreshPostFeed(postFeed, "", "Homework Help"); 
+
+				
+			} else if (selectedItem != null && selectedItem.equals("My Posts")) {
+	     		refreshPostFeed(postFeed, "", ""); 
+
+				
+			}
+		});
+		
+		// TODO: Get list of threads from the database. Possibly move to update display
+		//threadChoice.setItems(FXCollections.observableArrayList(list));
+
+     	
      	scrollFeed.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
      	scrollFeed.setLayoutX(15);
      	scrollFeed.setLayoutY(100);
      	scrollFeed.setPrefSize(760, 420);
      	scrollFeed.setFitToWidth(true);
 
-     	refreshPostFeed(postFeed, ""); 
+     	refreshPostFeed(postFeed, "", ""); 
 
      	// listener for search so it can not input over 500
      	text_searchBar.textProperty().addListener((_, _, newVal) -> {
@@ -235,7 +277,7 @@ public class ViewRole1Home {
      			query = newVal.substring(0, 500);
      			text_searchBar.setText(query);
      		}
-     		refreshPostFeed(postFeed, newVal); 
+     		refreshPostFeed(postFeed, newVal, threadChoice.getValue()); 
      	});
 
 		// This is the end of the GUI initialization code
@@ -243,7 +285,7 @@ public class ViewRole1Home {
 		// Place all of the widget items into the Root Pane's list of children
          theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-	        line_Separator4, text_searchBar, button_CreatePost, scrollFeed, button_Logout, button_Quit);
+	        line_Separator4, text_searchBar, threadChoice, button_CreatePost, scrollFeed, button_Logout, button_Quit);
 }
 	
 	
@@ -344,9 +386,15 @@ public class ViewRole1Home {
 	 * to the post list like deleting or adding posts. Each post displays its read/unread
 	 * status for the current user, the total number of replies, and the number of unread replies.</p>
 	 */
-	private void refreshPostFeed(VBox container, String keyword) {
+	private void refreshPostFeed(VBox container, String keyword, String thread) {
 	    container.getChildren().clear();
-	    List<post> results = theDatabase.searchPost(keyword);
+	    List<post> results;
+	    if (threadChoice.getValue() == "My Posts") {
+	    	results = theDatabase.searchPost(theUser.getUserName());
+	    } else {
+	    	
+	    	results = theDatabase.searchPost(keyword, thread);
+	    }
 
 	    for (post p : results) {
 	        String displayHeader = p.getDeleted() ? "(this post has been deleted)" : p.getTitle();
@@ -422,6 +470,18 @@ public class ViewRole1Home {
 	        contentCount.setText(postContent.getText().length() + "/500");
 	    });
 	    
+	    ComboBox<String> pickThread = new ComboBox<>();
+		pickThread.setLayoutX(width/2 - 50);
+		pickThread.setLayoutY(55);
+		List<String> dlist = new ArrayList<String>();	
+		dlist.add("General");
+		dlist.add("Quizzes");
+		dlist.add("Homework Help");
+		pickThread.setItems(FXCollections.observableArrayList(dlist));
+		pickThread.getSelectionModel().select(0);
+
+	    
+	    
 	    Button submit = new Button("Post");
 	    submit.setOnAction((_) -> {
 	        String title = postTitle.getText().trim();
@@ -437,14 +497,14 @@ public class ViewRole1Home {
 	        } else if (content.length() > 500) {
 	        	showValidationError("Post is too long! (Max 500 characters)");
 	        } else {
-	        	theDatabase.createPost(theUser.getUserName(), postTitle.getText(), postContent.getText());
-	        	refreshPostFeed(postFeed, "");
+	        	theDatabase.createPost(theUser.getUserName(), postTitle.getText(), pickThread.getValue(), postContent.getText());
+	        	refreshPostFeed(postFeed, "", "");
 	        	dialog.close();
 	        }
 	    });
 	    submit.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
-	    layout.getChildren().addAll(new Label("New Discussion"), postTitle, titleCount, postContent, contentCount, submit);
+	    layout.getChildren().addAll(new Label("New Discussion"), postTitle, titleCount, postContent, pickThread, contentCount, submit);
 	    dialog.setScene(new Scene(layout));
 	    dialog.show();
 	}
@@ -490,11 +550,15 @@ public class ViewRole1Home {
 	        if (theUser.getUserName().equals(r.getAuthor())) {
 
 	            Button editReplyBtn = new Button("Edit");
-	            editReplyBtn.setStyle("-fx-font-size: 9px; -fx-padding: 2 6 2 6;");
+	            //editReplyBtn.setStyle("-fx-font-size: 15px; -fx-padding: 2 6 2 6;");
 
 	            editReplyBtn.setOnAction(e -> {
 
 	                TextInputDialog dialog = new TextInputDialog(r.getContent());
+	                DialogPane dPane = dialog.getDialogPane();
+	                dPane.getStylesheets().add(
+		                    getClass().getResource("/applicationMain/application.css").toExternalForm());
+		            dPane.getStyleClass().add("alertStyle");
 	                dialog.setTitle("Edit Reply");
 	                dialog.setHeaderText("Edit your reply:");
 	                dialog.setContentText("Content:");
@@ -543,8 +607,8 @@ public class ViewRole1Home {
 		theDatabase.markPostAsRead(p.getPostID(), theUser.getUserName());
 		Stage stage = new Stage();
 	    stage.initModality(Modality.APPLICATION_MODAL);
-	    stage.setTitle("Post");
-
+	    stage.setTitle(p.getTitle());
+	    
 	    VBox layout = new VBox(15);
 	    layout.setStyle("-fx-padding: 20;");
 
@@ -582,7 +646,7 @@ public class ViewRole1Home {
 	                //set the objects value to deleted as well 
 	                p.setDeleted(true);
 	                stage.close();
-	                refreshPostFeed(postFeed, "");
+	                refreshPostFeed(postFeed, "", "");
 	            }
 	        });
 	        buttons.getChildren().add(button_Delete);
@@ -697,7 +761,7 @@ public class ViewRole1Home {
 				}
 	            
 	            stage.close();
-	            refreshPostFeed(postFeed, "");
+	            refreshPostFeed(postFeed, "", "");
 	        });
 
 	        buttons.getChildren().add(button_update);
@@ -753,7 +817,7 @@ public class ViewRole1Home {
 
 
 	    stage.setScene(new Scene(layout, 400, 500));
-	    stage.setOnHidden(e -> refreshPostFeed(postFeed, ""));
+	    stage.setOnHidden(e -> refreshPostFeed(postFeed, "", ""));
 	    stage.show();
 	}
 }

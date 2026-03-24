@@ -22,12 +22,13 @@ public class post {
     private String timestamp;
     private boolean isDeleted;
     private List<reply> replies;
+    private String thread;
 
     /*******
 	 * <p> Method: post(int id, String author, String title, String content, String time, boolean deleted) </p>
 	 * 
 	 * <p> Description: The constructor for posts. It takes an ID value, Strings for the post Author, title, contents
-	 * 	and time of post. It also holds a flag to tell if a post has been deleted or not </p>
+	 * 	thread, and time of post. It also holds a flag to tell if a post has been deleted or not </p>
 	 *  
 	 * @param id : the id value for this post
 	 * 
@@ -41,8 +42,10 @@ public class post {
 	 * 
 	 * @param deleted : a flag to show if a certain post has been deleted
 	 * 
+	 * @param thread : the thread the post is under
+	 * 
 	*/
-    public post(int id, String author, String title, String content, String time, boolean deleted) {
+    public post(int id, String author, String title, String content, String thread, String time, boolean deleted) {
         this.postID = id;
         this.author = author;
         this.title = deleted ? "(this post has been deleted)" : title;
@@ -50,6 +53,7 @@ public class post {
         this.timestamp = time;
         this.isDeleted = deleted;
         this.replies = new ArrayList<>();
+        this.thread = thread;
     }
     
     /*******
@@ -206,5 +210,25 @@ public class post {
 	 *  
 	*/
     public void removeReply(reply removedReply) {this.replies.remove(removedReply);}
+    
+    /*******
+	 * <p> Method: boolean getThread() </p>
+	 * 
+	 * <p> Description: Getter for a post's thread. This is used to categorize posts. </p>
+	 *  
+	 *  @return this.thread : returns the thread of a post	 
+	 *  
+	*/
+    public String getThread() {return this.thread;}
+    
+    /*******
+	 * <p> Method: void setDeleted(boolean i) </p>
+	 * 
+	 * <p> Description: Sets the thread of a post. This is used to categorize posts. </p>
+	 *  
+	 *  @param thread : the thread of a post
+	 * 
+	*/
+    public void setThread(String thread) {this.thread = thread;}
     
 }
