@@ -537,7 +537,7 @@ public class ViewAdminHome {
 	/**********
 	 * Private local method to initialize the standard fields for a text input field
 	 * 
-	 * @param b		The TextField object to be initialized
+	 * @param t		The TextField object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -601,9 +601,9 @@ public class ViewAdminHome {
 	 * <p> Description: Helper method to display alerts during delete operations.
 	 * Centralizes alert display for consistency.</p>
 	 * 
-	 * @param title The alert dialog title
-	 * @param message The alert message content
-	 * @param type The alert type (INFORMATION, WARNING, ERROR)
+	 * 
+	 *
+	 * 
 	 */
 	public static void showDeleteAlert() {
 	    deleteAlert.showAndWait();
@@ -830,7 +830,7 @@ public class ViewAdminHome {
 	 * <p> Description: This method displays a new panel for a user to read a post and all of its replys.
 	 * This is where the user can reply to posts and delete posts. </p>
 	 * 
-	 * @param post p: the post that the panel is showing
+	 * @param p: the post that the panel is showing
 	 */
 	protected void showFullPost(post p) {
 		Stage stage = new Stage();
