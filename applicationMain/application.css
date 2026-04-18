@@ -30,6 +30,65 @@
 	-fx-border-radius: 15;
 }
 
+/* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
+
+
+.text-area{
+	-fx-text-fill: #FFFFFF;
+	-fx-prompt-text-fill: #8499a4;
+	-fx-border-width : 2px;
+	-fx-border-color: #181c1f;
+	-fx-border-radius: 15;
+	
+	-fx-background-radius: 15;
+	
+	-fx-background-color: transparent;
+    -fx-background-insets: 0;
+	
+}
+
+.text-area .content {
+	-fx-background-color: #2a3236;
+	-fx-background-insets: 0;
+    -fx-background-radius: 15;
+}
+
+.text-area:focused {
+	-fx-border-color: #8499a4;
+	
+}
+
+.text-area .scroll-bar {
+    -fx-opacity: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: transparent;    
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+    
+}
+
+.text-area .scroll-pane .viewport {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    
+}
+
+.text-area .scroll-pane .content {
+	-fx-background-color: #2a3236;
+    -fx-padding: 5;
+	
+}
+
+/* JavaFX CSS - Leave this comment until you have at least create one rule which uses -fx-Property */
+
+
+
 .label {
 	-fx-text-fill: #8499a4;
 }
@@ -113,6 +172,7 @@
 .post-feed-vbox {
     -fx-background-color: #181c1f;
 }
+
 
 /*
  * red ff4f40

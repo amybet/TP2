@@ -101,6 +101,9 @@ public class FoundationsMain extends Application {
 		if (database.isDatabaseEmpty()) {
 			// This is a first use, so have the user set up the admin account
 			guiFirstAdmin.ViewFirstAdmin.displayFirstAdmin(theStage);	
+			
+			// Set up general thread
+			database.createThread("General");
 		}
 		else
 			// This is not a first use, so set up for the user to log in or create a new account

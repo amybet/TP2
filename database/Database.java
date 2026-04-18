@@ -13,6 +13,7 @@ import entityClasses.post;
 import entityClasses.reply;
 
 
+
 /*******
  * <p> Title: Database Class. </p>
  * 
@@ -166,6 +167,19 @@ public class Database {
 	    		+ "postID INT, "
 	    		+ "PRIMARY KEY (userName, postID))";
 	    statement.execute(createReadPostsTable);
+	    
+	    String createFlagsTable = "CREATE TABLE IF NOT EXISTS flags (" 
+	    	    + "flagID INT AUTO_INCREMENT PRIMARY KEY, "
+	    	    + "postID INT, "
+	    	    + "flaggedBy VARCHAR(255), "
+	    	    + "postAuthor VARCHAR(255), "
+	    	    + "category VARCHAR(255), "
+	    	    + "description TEXT, "
+	    	    + "suggestedAction TEXT, "
+	    	    + "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+	    	    + "FOREIGN KEY (postID) REFERENCES posts(postID))";
+
+	    	statement.execute(createFlagsTable);
 	}
 
 
@@ -328,6 +342,165 @@ public class Database {
 		return userList;
 	}
 	
+	// TODO: Add javaDocs
+	public void createFlag(int postID, String flaggedBy, String postAuthor,
+            String category, String description, String suggestedAction) {
+
+		String query = "INSERT INTO flags (postID, flaggedBy, postAuthor, category, description, suggestedAction) "
+		       + "VALUES (?, ?, ?, ?, ?, ?)";
+		
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+		pstmt.setInt(1, postID);
+		pstmt.setString(2, flaggedBy);
+		pstmt.setString(3, postAuthor);
+		pstmt.setString(4, category);
+		pstmt.setString(5, description);
+		pstmt.setString(6, suggestedAction);
+		
+		pstmt.executeUpdate();
+		} catch (SQLException e) {
+		e.printStackTrace();
+		}
+	}
+	
+	// TODO: Add javaDocs
+	public List<String> getAllFlags() {
+	    List<String> result = new ArrayList<>();
+
+	    String query = "SELECT * FROM flags ORDER BY timestamp DESC";
+
+	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+	        ResultSet rs = pstmt.executeQuery();
+
+	        while (rs.next()) {
+	            String flagInfo = String.format(
+	                "Post ID: %d\nFlagged By: %s\nAuthor: %s\nCategory: %s\nSuggested Action: %s\nDescription: %s\nTime: %s",
+	                rs.getInt("postID"),
+	                rs.getString("flaggedBy"),
+	                rs.getString("postAuthor"),
+	                rs.getString("category"),
+	                rs.getString("suggestedAction"),
+	                rs.getString("description"),
+	                rs.getString("timestamp")
+	            );
+
+	            result.add(flagInfo);
+	        }
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+
+	    return result;
+	}
+	
+	/*******
+	 *  <p> Method: List createThread(String name) </p>
+	 *  
+	 *  <P> Description: creates a new thread by making a blank post. Blank posts contain the value
+	 *  "THREADBLANK" for its title, author, and content. The given name is used for the thread.</p>
+	 *  
+	 *  @param name The name for the new thread.
+	 */
+	public void createThread(String name) {
+		createPost("THREADBLANK", "THREADBLANK", name, "THREADBLANK");
+	}
+	
+	/*******
+	 *  <p> Method: List editThread(String oldName, String newName) </p>
+	 *  
+	 *  <P> Description: Edits all post and replies under the thread name to have the new name. </p>
+	 *  
+	 *  @param oldName String containing the old thread name
+	 *  @param newName String containing the new thread name
+	 */
+	public void editThread(String oldName, String newName) {
+		// ACCOUNTS FOR POSTS TABLE
+		String query = "UPDATE posts SET thread = ? WHERE thread = ?";
+	    try (PreparedStatement ps = connection.prepareStatement(query)) {
+	        ps.setString(1, newName);
+	        ps.setString(2, oldName);
+	        ps.executeUpdate();
+	    } catch(SQLException e) {
+	    	System.out.println("ERROR IN EDIT POST THREAD");
+	    	e.printStackTrace();
+	    }
+	    
+	    // ACOUNT FOR REPLIES TABLE
+	    // TODO: will error if replies table is empty
+		query = "UPDATE replies SET thread = ? WHERE thread = ?";
+	    try (PreparedStatement ps = connection.prepareStatement(query)) {
+	        ps.setString(1, newName);
+	        ps.setString(2, oldName);
+	        ps.executeUpdate();
+	    } catch(SQLException e) {
+	    	System.out.println("ERROR IN EDIT REPLY THREAD");
+	    	e.printStackTrace();
+	    }
+	}
+	
+	/*******
+	 *  <p> Method: List deleteThread(String name) </p>
+	 *  
+	 *  <P> Description: deletes the THREADBLANK post from the database and then edits all posts
+	 *  under the deleted thread to be under "General".</p>
+	 *  
+	 *  @param name The name for thread to be deleted.
+	 */
+	public void deleteThread(String name) {
+		// delete THREADBLANK from post table
+		String query = "DELETE FROM posts WHERE thread = ? AND title = ?";
+	    try (PreparedStatement ps = connection.prepareStatement(query)) {
+	        ps.setString(1, name);
+	        ps.setString(2, "THREADBLANK");
+	        ps.executeUpdate();
+	    } catch(SQLException e) {
+	    	System.out.println("ERROR IN DELETE POST THREAD");
+	    	e.printStackTrace();
+	    }
+	    
+	    // might need to check replies table?
+	    
+	    // move all threads to general
+	    editThread(name, "General");
+	}
+	
+	/*******
+	 *  <p> Method: List getThreadBlanks(String name) </p>
+	 *  
+	 *  <P> Description: returns a list of all THREADBLANK posts in the database.</p>
+	 *  
+	 *  @return list of post objects
+	 */
+	public List<post> getThreadBlanks() {
+		List<post> threadBlanks = new ArrayList<>();
+		
+		
+		String query = "SELECT * FROM posts WHERE author = ? AND title = ? AND content = ?";
+		try(PreparedStatement pstmt = connection.prepareStatement(query)){
+			pstmt.setString(1, "THREADBLANK");
+			pstmt.setString(2, "THREADBLANK");
+			pstmt.setString(3, "THREADBLANK");
+
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()) {
+				threadBlanks.add(new post(
+						rs.getInt("postID"),
+						rs.getString("author"), 
+						rs.getString("title"),
+                       rs.getString("content"), 
+                       rs.getString("thread"),
+                       rs.getString("timestamp"), 
+                       rs.getBoolean("isDeleted")));
+			}
+			pstmt.execute();
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		return threadBlanks;
+	}
+	
+	
 /*******
  * <p> Method: boolean loginAdmin(User user) </p>
  * 
@@ -340,6 +513,14 @@ public class Database {
  * 
  */
 	public boolean loginAdmin(User user){
+		// CHECK FOR INJECTION
+//		if (!DatabaseInputRecognizer.checkInjection(user.getUserName()) ||
+//				!DatabaseInputRecognizer.checkInjection(user.getPassword())) {
+//			System.out.println("SQL INJECTION FOUND IN LOGIN ADMIN");
+//			return false;
+//		}
+			
+		
 		// Validates an admin user's login credentials so the user can login in as an Admin.
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
 				+ "adminRole = TRUE";
@@ -368,6 +549,13 @@ public class Database {
  * 
  */
 	public boolean loginRole1(User user) {
+		// CHECK FOR INJECTION
+//		if (!DatabaseInputRecognizer.checkInjection(user.getUserName()) ||
+//				!DatabaseInputRecognizer.checkInjection(user.getPassword())) {
+//			System.out.println("SQL INJECTION FOUND IN LOGIN ADMIN");
+//			return false;
+//		}
+			
 		// Validates a student user's login credentials.
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
 				+ "newRole1 = TRUE";
@@ -396,6 +584,14 @@ public class Database {
 	 */
 	// Validates a reviewer user's login credentials.
 	public boolean loginRole2(User user) {
+//		// CHECK FOR INJECTION
+//		if (!DatabaseInputRecognizer.checkInjection(user.getUserName()) ||
+//				!DatabaseInputRecognizer.checkInjection(user.getPassword())) {
+//			System.out.println("SQL INJECTION FOUND IN LOGIN ADMIN");
+//			return false;
+//		}
+			
+		
 		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
 				+ "newRole2 = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -486,44 +682,131 @@ public class Database {
 	}
 	
 	
-	/*******
-	 * <p> Method: void deletePost(int postID) </p>
+	// Amy updated so it can verify post ownership before deleting
+	/**
+	 * <p> Method: boolean deletePost(int postID, String currentUsername) </p>
 	 * 
-	 * <p> Description: Takes the post ID of a post and sets the isDeleted flag to true;
-	 * This makes the contents change to (This post has been deleted), but users are still
-	 * able to see previous replys
+	 * <p> Description: Deletes a post by setting isDeleted flag to true.
+	 * Only the post author can delete the post.
+	 * Authorization check: Verifies current user is the post author.
 	 * </p>
 	 * 
-	 * @param int postID : the ID number of the post that is being deleted
+	 * @param postID the ID of the post to delete
+	 * @param currentUsername the username of the user requesting deletion
+	 * @return true if deletion successful, false if unauthorized or error
 	 */
-	public void deletePost(int postID) {
-		String query = "UPDATE posts SET isDeleted = TRUE WHERE postID = ?";
-	    try(PreparedStatement pstmt = connection.prepareStatement(query)){
-	        pstmt.setInt(1, postID);
-	        pstmt.executeUpdate();
-	    } catch(SQLException e) {
-	        e.printStackTrace();
+	public boolean deletePost(int postID, String currentUsername) {
+	    // Verify input
+	    if (postID <= 0 || currentUsername == null || currentUsername.isEmpty()) {
+	        System.err.println("ERROR: Invalid postID or username");
+	        return false;
+	    }
+	    
+	    // Get post author from database (authorization check)
+	    String getAuthorQuery = "SELECT author FROM posts WHERE postID = ?";
+	    try (PreparedStatement getAuthorStmt = connection.prepareStatement(getAuthorQuery)) {
+	        getAuthorStmt.setInt(1, postID);
+	        ResultSet rs = getAuthorStmt.executeQuery();
+	        
+	        // Check if post exists
+	        if (!rs.next()) {
+	            System.err.println("ERROR: Post not found");
+	            return false;
+	        }
+	        
+	        String postAuthor = rs.getString("author");
+	        
+	        // Verify current user is the original post author
+	        if (!postAuthor.equals(currentUsername)) {
+	            System.err.println("ERROR: CWE-863 Authorization Failure - User is not post author");
+	            System.err.println("  Post author: " + postAuthor);
+	            System.err.println("  Current user: " + currentUsername);
+	            return false;  // Deny unauthorized deletion
+	        }
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error retrieving post author: " + e.getMessage());
+	        return false;
+	    }
+	    
+	    // Authorization has been verified, proceed with deletion
+	    String deleteQuery = "UPDATE posts SET isDeleted = TRUE WHERE postID = ?";
+	    try (PreparedStatement deleteStmt = connection.prepareStatement(deleteQuery)) {
+	        deleteStmt.setInt(1, postID);
+	        deleteStmt.executeUpdate();
+	        System.out.println("SUCCESS: Post " + postID + " deleted by " + currentUsername);
+	        return true;
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error deleting post: " + e.getMessage());
+	        return false;
 	    }
 	}
 
-	/**********
-	 * <p> Method: updatePost() </p>
+	// Amy updated so it can verify post ownership before deleting
+
+	/**
+	 * <p> Method: boolean updatePost(int postId, String newTitle, String newContent, String currentUsername) </p>
 	 * 
-	 * <p> Description: Updates the title and content of an existing post. Also updates
-	 * the 'updatedAt' timestamp automatically.</p>
+	 * <p> Description: Updates title and content of a post.
+	 * Only the post author can update the post.
+	 * Authorization check: Verifies current user is the post author.
+	 * </p>
 	 * 
-	 * @param postId The ID of the post to edit
-	 * @param newTitle The new title of the post
-	 * @param newContent The new content of the post
-	 * @throws SQLException If a database error occurs
+	 * @param postId the ID of the post to update
+	 * @param newTitle the new title
+	 * @param newContent the new content
+	 * @param currentUsername the username of the user requesting update
+	 * @return true if update successful, false if unauthorized or error
 	 */
-	public void updatePost(int postId, String newTitle, String newContent) throws SQLException {
-		String sql = "UPDATE posts SET title = ?, content = ? WHERE postID = ?";
-	    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-	        ps.setString(1, newTitle);
-	        ps.setString(2, newContent);
-	        ps.setInt(3, postId);
-	        ps.executeUpdate();
+	public boolean updatePost(int postId, String newTitle, String newContent, String currentUsername) {
+	    // STEP 1: Verify inputs
+	    if (postId <= 0 || currentUsername == null || currentUsername.isEmpty()) {
+	        System.err.println("ERROR: Invalid postID or username");
+	        return false;
+	    }
+	    
+	    if (newTitle == null || newTitle.isEmpty() || newContent == null || newContent.isEmpty()) {
+	        System.err.println("ERROR: Title and content cannot be empty");
+	        return false;
+	    }
+	    
+	    // Get post author for authorization check
+	    String getAuthorQuery = "SELECT author FROM posts WHERE postID = ?";
+	    try (PreparedStatement getAuthorStmt = connection.prepareStatement(getAuthorQuery)) {
+	        getAuthorStmt.setInt(1, postId);
+	        ResultSet rs = getAuthorStmt.executeQuery();
+	        
+	        // Check if post exists
+	        if (!rs.next()) {
+	            System.err.println("ERROR: Post not found");
+	            return false;
+	        }
+	        
+	        String postAuthor = rs.getString("author");
+	        
+	        // Verify current user is the original post author
+	        if (!postAuthor.equals(currentUsername)) {
+	            System.err.println("ERROR: CWE-863 Authorization Failure - User is not post author");
+	            System.err.println("  Post author: " + postAuthor);
+	            System.err.println("  Current user: " + currentUsername);
+	            return false;  // ← DENY unauthorized update
+	        }
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error retrieving post author: " + e.getMessage());
+	        return false;
+	    }
+	    
+	    // Authorization has been verified, proceed with update
+	    String updateQuery = "UPDATE posts SET title = ?, content = ? WHERE postID = ?";
+	    try (PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
+	        updateStmt.setString(1, newTitle);
+	        updateStmt.setString(2, newContent);
+	        updateStmt.setInt(3, postId);
+	        updateStmt.executeUpdate();
+	        System.out.println("SUCCESS: Post " + postId + " updated by " + currentUsername);
+	        return true;
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error updating post: " + e.getMessage());
+	        return false;
 	    }
 	}
 	
@@ -542,11 +825,13 @@ public class Database {
 	 */
 	public List<post> searchPost(String search, String thread){
 		List<post> result = new ArrayList<>();
-		String query = "SELECT * FROM posts WHERE (title LIKE ? OR content LIKE ?) AND (thread LIKE ?)";
+		String query = "SELECT * FROM posts WHERE (title LIKE ? OR content LIKE ?) AND (thread LIKE ?) "
+				+ "AND NOT (title = ?)";
 		try(PreparedStatement pstmt = connection.prepareStatement(query)){
 			pstmt.setString(1, "%" + search + "%");
 			pstmt.setString(2, "%" + search + "%");
 			pstmt.setString(3, "%" + thread + "%");
+			pstmt.setString(4, "THREADBLANK");
 
 			ResultSet rs = pstmt.executeQuery();
 			while(rs.next()) {
@@ -629,56 +914,71 @@ public class Database {
 	    }
 	}
 
-	/**********
-	 * <p> Method: updateReply() </p>
+	// Amy updated so it can verify post ownership before deleting
+
+	/**
+	 * <p> Method: boolean updateReply(int replyID, String newContent, String currentUsername) </p>
 	 * 
-	 * <p> Description: Updates the content of a reply and refreshes the 'updatedAt' timestamp.</p>
-	 * 
-	 * @param replyId The ID of the reply to edit
-	 * @param newContent The new content of the reply
-	 * @throws SQLException If a database error occurs
-	 */
-	public void updateReply(int replyId, String newContent) throws SQLException {
-	    String sql = "UPDATE replies SET content = ? WHERE replyID = ?";
-	    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-	        ps.setString(1, newContent);
-	        ps.setInt(2, replyId);
-	        ps.executeUpdate();
-	    }
-	}
-	
-	/*******
-	 * <p> Method: List<reply> getRepliesForPost(int postID) </p>
-	 * 
-	 * <p> Description: Takes a post's ID and gets all the replys linked to that post. 
-	 * It searches the reply list for all replys that belong to the postID and orders them by timestamp.
+	 * <p> Description: Updates content of a reply.
+	 * Only the reply author can update the reply.
+	 * Authorization check: Verifies current user is the reply author.
 	 * </p>
 	 * 
-	 * @param int postID : the ID for the original post that the reply list belongs to
-	 *
-	 * @return List<reply> replies : the list of replys belonging to the post ID
+	 * @param replyID the ID of the reply to update
+	 * @param newContent the new content
+	 * @param currentUsername the username of the user requesting update
+	 * @return true if update successful, false if unauthorized or error
 	 */
-	public List<reply> getRepliesForPost(int postID) {
-	    List<reply> replies = new ArrayList<>();
-	    String query = "SELECT * FROM replies WHERE parentPostID = ? ORDER BY timestamp ASC";
+	public boolean updateReply(int replyID, String newContent, String currentUsername) throws SQLException {
+	    // Verify input
+	    if (replyID <= 0 || currentUsername == null || currentUsername.isEmpty()) {
+	        System.err.println("ERROR: Invalid replyID or username");
+	        return false;
+	    }
 	    
-	    try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-	        pstmt.setInt(1, postID);
-	        ResultSet rs = pstmt.executeQuery();
+	    if (newContent == null || newContent.isEmpty()) {
+	        System.err.println("ERROR: Content cannot be empty");
+	        return false;
+	    }
+	    
+	    // Get reply author for authorization check
+	    String getAuthorQuery = "SELECT author FROM replies WHERE replyID = ?";
+	    try (PreparedStatement getAuthorStmt = connection.prepareStatement(getAuthorQuery)) {
+	        getAuthorStmt.setInt(1, replyID);
+	        ResultSet rs = getAuthorStmt.executeQuery();
 	        
-	        while (rs.next()) {
-	            replies.add(new reply(
-	                rs.getInt("replyID"),
-	                rs.getInt("parentPostID"),
-	                rs.getString("author"),
-	                rs.getString("content"),
-	                rs.getString("timestamp")
-	            ));
+	        // Check if reply exists
+	        if (!rs.next()) {
+	            System.err.println("ERROR: Reply not found");
+	            return false;
+	        }
+	        
+	        String replyAuthor = rs.getString("author");
+	        
+	        // Verify current user is the reply author
+	        if (!replyAuthor.equals(currentUsername)) {
+	            System.err.println("ERROR: CWE-863 Authorization Failure - User is not reply author");
+	            System.err.println("  Reply author: " + replyAuthor);
+	            System.err.println("  Current user: " + currentUsername);
+	            return false;  // Deny unauthorized update
 	        }
 	    } catch (SQLException e) {
-	        e.printStackTrace();
+	        System.err.println("ERROR: Database error retrieving reply author: " + e.getMessage());
+	        return false;
 	    }
-	    return replies;
+	    
+	    // Authorization verified, proceed with update
+	    String updateQuery = "UPDATE replies SET content = ? WHERE replyID = ?";
+	    try (PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
+	        updateStmt.setString(1, newContent);
+	        updateStmt.setInt(2, replyID);
+	        updateStmt.executeUpdate();
+	        System.out.println("SUCCESS: Reply " + replyID + " updated by " + currentUsername);
+	        return true;
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error updating reply: " + e.getMessage());
+	        return false;
+	    }
 	}
 	
 	/*******
@@ -1489,239 +1789,249 @@ public class Database {
 	}
 	
 	
-	/*******
-	 * <p> Method: boolean updateUserRole(String username, String role, String value) </p>
+	// Amy updated so it can verify admin role verification
+
+	/**
+	 * <p> Method: boolean updateUserRole(String username, String role, String value, String currentUsername, boolean currentUserIsAdmin) </p>
 	 * 
-	 * <p> Description: Update a specified role for a specified user's and set and update all the
-	 * 		current user attributes.</p>
+	 * <p> Description: Updates a user's role.
+	 * Only admin users can update user roles.
+	 * Authorization check: Verifies current user has adminRole = TRUE.
+	 * </p>
 	 * 
-	 * @param username is the username of the user
-	 *  
-	 * @param role is string that specifies the role to update
-	 * 
-	 * @param value is the string that specified TRUE or FALSE for the role
-	 * 
-	 * @return true if the update was successful, else false
-	 *  
+	 * @param username the username of the user whose role is being updated
+	 * @param role the role to update ("Admin", "Role1", "Role2")
+	 * @param value the new value ("true" or "false")
+	 * @param currentUsername the username of the user requesting update
+	 * @param currentUserIsAdmin whether current user has admin role
+	 * @return true if update successful, false if unauthorized or error
 	 */
-	// Update a users role
-	public boolean updateUserRole(String username, String role, String value) {
-		if (role.compareTo("Admin") == 0) {
-			String query = "UPDATE userDB SET adminRole = ? WHERE username = ?";
-			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-				pstmt.setString(1, value);
-				pstmt.setString(2, username);
-				pstmt.executeUpdate();
-				if (value.compareTo("true") == 0)
-					currentAdminRole = true;
-				else
-					currentAdminRole = false;
-				return true;
-			} catch (SQLException e) {
-				return false;
-			}
-		}
-		if (role.compareTo("Role1") == 0) {
-			String query = "UPDATE userDB SET newRole1 = ? WHERE username = ?";
-			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-				pstmt.setString(1, value);
-				pstmt.setString(2, username);
-				pstmt.executeUpdate();
-				if (value.compareTo("true") == 0)
-					currentNewRole1 = true;
-				else
-					currentNewRole1 = false;
-				return true;
-			} catch (SQLException e) {
-				return false;
-			}
-		}
-		if (role.compareTo("Role2") == 0) {
-			String query = "UPDATE userDB SET newRole2 = ? WHERE username = ?";
-			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-				pstmt.setString(1, value);
-				pstmt.setString(2, username);
-				pstmt.executeUpdate();
-				if (value.compareTo("true") == 0)
-					currentNewRole2 = true;
-				else
-					currentNewRole2 = false;
-				return true;
-			} catch (SQLException e) {
-				return false;
-			}
-		}
-		return false;
+	public boolean updateUserRole(String username, String role, String value, String currentUsername, boolean currentUserIsAdmin) {
+	    // Verify inputs
+	    if (username == null || username.isEmpty() || role == null || role.isEmpty() || 
+	        value == null || value.isEmpty() || currentUsername == null || currentUsername.isEmpty()) {
+	        System.err.println("ERROR: Invalid parameters");
+	        return false;
+	    }
+	    
+	    // Verify current user is admin for authorization check
+	    if (!currentUserIsAdmin) {
+	        System.err.println("ERROR: CWE-863 Authorization Failure - User is not admin");
+	        System.err.println("  Current user: " + currentUsername);
+	        System.err.println("  Admin privilege required: YES");
+	        System.err.println("  Current user is admin: NO");
+	        return false;  // ← DENY non-admin role update
+	    }
+	    
+	    // Additional check: Can only be done during initial setup or by system admin
+	    if (role.equals("Admin") && value.equals("true") && !username.equals(currentUsername)) {
+
+	    }
+	    
+	    // Authorization verified, proceed with role update
+	    String roleColumn = null;
+	    if (role.equals("Admin")) {
+	        roleColumn = "adminRole";
+	    } else if (role.equals("Role1")) {
+	        roleColumn = "newRole1";
+	    } else if (role.equals("Role2")) {
+	        roleColumn = "newRole2";
+	    } else {
+	        System.err.println("ERROR: Invalid role specified");
+	        return false;
+	    }
+	    
+	    String updateQuery = "UPDATE userDB SET " + roleColumn + " = ? WHERE userName = ?";
+	    try (PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
+	        // Convert "true"/"false" string to boolean value for database
+	        boolean boolValue = value.equals("true");
+	        updateStmt.setBoolean(1, boolValue);
+	        updateStmt.setString(2, username);
+	        
+	        int rowsAffected = updateStmt.executeUpdate();
+	        
+	        if (rowsAffected > 0) {
+	            System.out.println("SUCCESS: User " + username + " role " + role + " updated to " + value + " by admin " + currentUsername);
+	            
+	            // Update current user's role if it's the current user being modified
+	            if (username.equals(currentUsername)) {
+	                if (role.equals("Admin"))
+	                    currentAdminRole = boolValue;
+	                else if (role.equals("Role1"))
+	                    currentNewRole1 = boolValue;
+	                else if (role.equals("Role2"))
+	                    currentNewRole2 = boolValue;
+	            }
+	            
+	            return true;
+	        } else {
+	            System.err.println("ERROR: Failed to update user role");
+	            return false;
+	        }
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error updating user role: " + e.getMessage());
+	        return false;
+	    }
 	}
 	
-	/*******
+	// Amy updated so it can verify admin role verification
 
-	 * <p> Method: boolean deleteUserByUsername(String username) </p>
-
+	/**
+	 * <p> Method: boolean deleteUserByUsername(String usernameToDelete, String currentUsername, boolean currentUserIsAdmin) </p>
 	 * 
-
-	 * <p> Description: Delete a user from the database given their username.</p>
-
+	 * <p> Description: Deletes a user account from the database.
+	 * Only admin users can delete user accounts.
+	 * Authorization check: Verifies current user has adminRole = TRUE.
+	 * </p>
 	 * 
-
-	 * @param username the username of the user to delete
-
-	 * 
-
-	 * @return true if deletion was successful, false otherwise
-
-	 *  
-
+	 * @param usernameToDelete the username of the user to delete
+	 * @param currentUsername the username of the user requesting deletion
+	 * @param currentUserIsAdmin whether current user has admin role
+	 * @return true if deletion successful, false if unauthorized or error
 	 */
-
-	public boolean deleteUserByUsername(String username) {
-
-		String query = "DELETE FROM userDB WHERE userName = ?";
-
-		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-
-			pstmt.setString(1, username);
-
-			int rowsAffected = pstmt.executeUpdate();
-
-			
-
-			// If at least one row was deleted, return true
-
-			return rowsAffected > 0;
-
-			
-
-		} catch (SQLException e) {
-
-			System.err.println("Error deleting user: " + e.getMessage());
-
-			e.printStackTrace();
-
-			return false;
-
-		}
-
+	public boolean deleteUserByUsername(String usernameToDelete, String currentUsername, boolean currentUserIsAdmin) {
+	    // Verify inputs
+	    if (usernameToDelete == null || usernameToDelete.isEmpty() || 
+	        currentUsername == null || currentUsername.isEmpty()) {
+	        System.err.println("ERROR: Invalid username");
+	        return false;
+	    }
+	    
+	    // Verify current user is admin for authorization check
+	    if (!currentUserIsAdmin) {
+	        System.err.println("ERROR: CWE-863 Authorization Failure - User is not admin");
+	        System.err.println("  Current user: " + currentUsername);
+	        System.err.println("  Admin privilege required: YES");
+	        System.err.println("  Current user is admin: NO");
+	        return false;  // Deny non-admin user deletion
+	    }
+	    
+	    // Prevent admin from deleting themselves
+	    if (currentUsername.equals(usernameToDelete)) {
+	        System.err.println("ERROR: Admin cannot delete their own account");
+	        return false;
+	    }
+	    
+	    // Verify user to delete exists
+	    String checkUserQuery = "SELECT username FROM userDB WHERE userName = ?";
+	    try (PreparedStatement checkUserStmt = connection.prepareStatement(checkUserQuery)) {
+	        checkUserStmt.setString(1, usernameToDelete);
+	        ResultSet rs = checkUserStmt.executeQuery();
+	        
+	        if (!rs.next()) {
+	            System.err.println("ERROR: User to delete not found: " + usernameToDelete);
+	            return false;
+	        }
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error checking if user exists: " + e.getMessage());
+	        return false;
+	    }
+	    
+	    // Authorization verified, proceed with deletion
+	    String deleteQuery = "DELETE FROM userDB WHERE userName = ?";
+	    try (PreparedStatement deleteStmt = connection.prepareStatement(deleteQuery)) {
+	        deleteStmt.setString(1, usernameToDelete);
+	        int rowsAffected = deleteStmt.executeUpdate();
+	        
+	        if (rowsAffected > 0) {
+	            System.out.println("SUCCESS: User " + usernameToDelete + " deleted by admin " + currentUsername);
+	            return true;
+	        } else {
+	            System.err.println("ERROR: Failed to delete user");
+	            return false;
+	        }
+	    } catch (SQLException e) {
+	        System.err.println("ERROR: Database error deleting user: " + e.getMessage());
+	        e.printStackTrace();
+	        return false;
+	    }
 	}
 	
 	// Attribute getters for the current user
 	/*******
 	 * <p> Method: String getCurrentUsername() </p>
-	 * 
 	 * <p> Description: Get the current user's username.</p>
-	 * 
 	 * @return the username value is returned
-	 *  
 	 */
 	public String getCurrentUsername() { return currentUsername;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentPassword() </p>
-	 * 
 	 * <p> Description: Get the current user's password.</p>
-	 * 
-	 * @return the password value is returned
-	 *  
+	 * @return the password value is returned  
 	 */
 	public String getCurrentPassword() { return currentPassword;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentFirstName() </p>
-	 * 
-	 * <p> Description: Get the current user's first name.</p>
-	 * 
-	 * @return the first name value is returned
-	 *  
+	 * <p> Description: Get the current user's first name.</p> 
+	 * @return the first name value is returned 
 	 */
 	public String getCurrentFirstName() { return currentFirstName;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentMiddleName() </p>
-	 * 
 	 * <p> Description: Get the current user's middle name.</p>
-	 * 
-	 * @return the middle name value is returned
-	 *  
+	 * @return the middle name value is returned 
 	 */
 	public String getCurrentMiddleName() { return currentMiddleName;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentLastName() </p>
-	 * 
 	 * <p> Description: Get the current user's last name.</p>
-	 * 
-	 * @return the last name value is returned
-	 *  
+	 * @return the last name value is returned 
 	 */
 	public String getCurrentLastName() { return currentLastName;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentPreferredFirstName( </p>
-	 * 
 	 * <p> Description: Get the current user's preferred first name.</p>
-	 * 
 	 * @return the preferred first name value is returned
-	 *  
 	 */
 	public String getCurrentPreferredFirstName() { return currentPreferredFirstName;};
 
 	
 	/*******
 	 * <p> Method: String getCurrentEmailAddress() </p>
-	 * 
 	 * <p> Description: Get the current user's email address name.</p>
-	 * 
-	 * @return the email address value is returned
-	 *  
+	 * @return the email address value is returned 
 	 */
 	public String getCurrentEmailAddress() { return currentEmailAddress;};
 
 	
 	/*******
 	 * <p> Method: boolean getCurrentAdminRole() </p>
-	 * 
 	 * <p> Description: Get the current user's Admin role attribute.</p>
-	 * 
 	 * @return true if this user plays an Admin role, else false
-	 *  
 	 */
 	public boolean getCurrentAdminRole() { return currentAdminRole;};
 
 	
 	/*******
 	 * <p> Method: boolean getCurrentNewRole1() </p>
-	 * 
 	 * <p> Description: Get the current user's Student role attribute.</p>
-	 * 
-	 * @return true if this user plays a Student role, else false
-	 *  
+	 * @return true if this user plays a Student role, else false 
 	 */
 	public boolean getCurrentNewRole1() { return currentNewRole1;};
 
 	
 	/*******
 	 * <p> Method: boolean getCurrentNewRole2() </p>
-	 * 
 	 * <p> Description: Get the current user's Reviewer role attribute.</p>
-	 * 
-	 * @return true if this user plays a Reviewer role, else false
-	 *  
+	 * @return true if this user plays a Reviewer role, else false 
 	 */
 	public boolean getCurrentNewRole2() { return currentNewRole2;};
 
 	
 	/*******
-	 * <p> Debugging method</p>
-	 * 
+	 * <p> Debugging method</p> 
 	 * <p> Description: Debugging method that dumps the database of the console.</p>
-	 * 
 	 * @throws SQLException if there is an issues accessing the database.
-	 * 
 	 */
 	// Dumps the database.
 	public void dump() throws SQLException {
@@ -1742,9 +2052,7 @@ public class Database {
 
 	/*******
 	 * <p> Method: void closeConnection()</p>
-	 * 
 	 * <p> Description: Closes the database statement and connection.</p>
-	 * 
 	 */
 	// Closes the database statement and connection.
 	public void closeConnection() {

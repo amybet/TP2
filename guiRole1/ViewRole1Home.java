@@ -1,5 +1,6 @@
 package guiRole1;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,6 +11,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Alert.AlertType;
@@ -224,43 +226,23 @@ public class ViewRole1Home {
      	button_CreatePost.setOnAction((_) -> showCreatePostDialog());
      	button_CreatePost.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
+     	// threads
      	threadChoice = new ComboBox<>();
 		threadChoice.setLayoutX(150);
 		threadChoice.setLayoutY(55);
-		threadChoice.getSelectionModel().select(0);
-		List<String> list = new ArrayList<String>();
-		list.add("General");
-		list.add("My Posts");
-		list.add("Quizzes");
-		list.add("Homework Help");
+		List<String> list = getThreadNames();
+	
 		threadChoice.setItems(FXCollections.observableArrayList(list));
 		threadChoice.getSelectionModel().select(0);
 		
 		// Updates display to show posts from the chosen thread (the default is general)
 		threadChoice.setOnAction((_) -> {
-			String selectedItem = threadChoice.getValue();
-			if (selectedItem != null && selectedItem.equals("General")) {
-	     		refreshPostFeed(postFeed, "", ""); 
-
-				
-			} else if (selectedItem != null && selectedItem.equals("Quizzes")) {
-				
-	     		refreshPostFeed(postFeed, "", "Quizzes"); 
-
-			} else if (selectedItem != null && selectedItem.equals("Homework Help")) {
-	     		refreshPostFeed(postFeed, "", "Homework Help"); 
-
-				
-			} else if (selectedItem != null && selectedItem.equals("My Posts")) {
-	     		refreshPostFeed(postFeed, "", ""); 
-
-				
+			if (threadChoice.getValue() == "My Posts") {
+				refreshPostFeed(postFeed, "", "");
+			} else {
+				refreshPostFeed(postFeed, "", threadChoice.getValue());	
 			}
 		});
-		
-		// TODO: Get list of threads from the database. Possibly move to update display
-		//threadChoice.setItems(FXCollections.observableArrayList(list));
-
      	
      	scrollFeed.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
      	scrollFeed.setLayoutX(15);
@@ -358,6 +340,24 @@ public class ViewRole1Home {
 		t.setEditable(e);
 	}	
 	
+	private List<String> getThreadNames() {
+		List<post> threadBlanks = new ArrayList<>();
+		List<String> threadNames = new ArrayList<>();
+		threadBlanks = theDatabase.getThreadBlanks();
+		
+		// Append "My Posts" to list since it won't be in the database.
+		threadNames.add("My Posts");
+		
+		// Add all thread names to list
+		for (int i = 0; i < threadBlanks.size(); i++) {
+			threadNames.add(threadBlanks.get(i).getThread());
+		}
+		
+		return threadNames;
+	}
+	
+	
+	
 	/**********
 	 * <p> Method: void showValidationError(String message)</p>
 	 * 
@@ -442,6 +442,7 @@ public class ViewRole1Home {
 	    Stage dialog = new Stage();
 	    dialog.initModality(Modality.APPLICATION_MODAL);
 	    VBox layout = new VBox(10);
+	    layout.setPrefWidth(400);
 	    layout.setStyle("-fx-padding: 20");
 	    layout.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
@@ -452,11 +453,21 @@ public class ViewRole1Home {
 	    Label titleCount = new Label("0/32");
 	    titleCount.setStyle("-fx-text-fill: gray;");
 	    
-	    TextField postContent = new TextField();
+	    TextArea postContent = new TextArea();
+	    postContent.setPrefHeight(200);
+	    postContent.setWrapText(true);
+	    postContent.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 	    postContent.setPromptText("Write your post (Max 500):");
+	    
+	    Platform.runLater(() -> {
+	        ScrollPane sp = (ScrollPane) postContent.lookup(".scroll-pane");
+	        sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+	        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+	    });
+	    
+	    
 	    Label contentCount = new Label("0/500");
 	    contentCount.setStyle("-fx-text-fill: gray;");
-	    postContent.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 	    
 	    // keeps the input of content <= 32
 	    postTitle.textProperty().addListener((_, _, newValue) -> {
@@ -473,10 +484,9 @@ public class ViewRole1Home {
 	    ComboBox<String> pickThread = new ComboBox<>();
 		pickThread.setLayoutX(width/2 - 50);
 		pickThread.setLayoutY(55);
-		List<String> dlist = new ArrayList<String>();	
-		dlist.add("General");
-		dlist.add("Quizzes");
-		dlist.add("Homework Help");
+		List<String> dlist = getThreadNames();
+		dlist.remove(0);
+
 		pickThread.setItems(FXCollections.observableArrayList(dlist));
 		pickThread.getSelectionModel().select(0);
 
@@ -504,7 +514,15 @@ public class ViewRole1Home {
 	    });
 	    submit.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
 
-	    layout.getChildren().addAll(new Label("New Discussion"), postTitle, titleCount, postContent, pickThread, contentCount, submit);
+	    Button cancel = new Button("Cancel");
+	    cancel.setOnAction((_) -> {
+	    	dialog.close();
+	    });
+	    cancel.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
+	    
+	    
+	    layout.getChildren().addAll(new Label("New Discussion"), postTitle, titleCount, postContent, pickThread,
+	    		contentCount, submit, cancel);
 	    dialog.setScene(new Scene(layout));
 	    dialog.show();
 	}
@@ -529,6 +547,7 @@ public class ViewRole1Home {
 	    for (reply r : replies) {
 	    	boolean wasUnread = unreadReplyIds.contains(r.getReplyID());
 	    	theDatabase.markReplyAsRead(r.getReplyID(), theUser.getUserName());
+	    	
 	    	// Limits displayed time to the minute
 	    	String replyRawTime = r.getTimestamp();
 	        String replyTrimmedTime = replyRawTime.length() > 16 ? replyRawTime.substring(0, 16) : replyRawTime;
@@ -546,11 +565,9 @@ public class ViewRole1Home {
 	        HBox replyBox = new HBox(10);
 	        replyBox.getChildren().add(rLabel);
 	        
-	        
 	        if (theUser.getUserName().equals(r.getAuthor())) {
 
 	            Button editReplyBtn = new Button("Edit");
-	            //editReplyBtn.setStyle("-fx-font-size: 15px; -fx-padding: 2 6 2 6;");
 
 	            editReplyBtn.setOnAction(e -> {
 
@@ -576,7 +593,7 @@ public class ViewRole1Home {
 	                }
 
 	                try {
-	                    theDatabase.updateReply(r.getReplyID(), newContent);
+	                    theDatabase.updateReply(r.getReplyID(), newContent, theUser.getUserName());
 	                } catch (SQLException ex) {
 	                    ex.printStackTrace();
 	                }
@@ -617,7 +634,8 @@ public class ViewRole1Home {
 	    Label postContent = new Label(contentText);
 	    postContent.setWrapText(true);
 	    postContent.setPrefWidth(350); 
-	    postContent.setStyle("-fx-text-fill: white; -fx-font-size: 18px;");
+	    postContent.setPrefHeight(300);
+	    postContent.setStyle("-fx-text-fill: white; -fx-font-size: 16px;");
 	    
 	    // limit the time to show until minutes
 	    String Time = p.getTimestamp();
@@ -628,7 +646,7 @@ public class ViewRole1Home {
 	    // Action Buttons
 	    HBox buttons = new HBox(10);
 	    
-	    // Delete button only shows for the author and admins
+	    // !!Delete button only shows for the author and admins
 	    if (theUser.getUserName().equals(p.getAuthor()) || theUser.getAdminRole()) {
 	        Button button_Delete = new Button("Delete");
 	        button_Delete.getStylesheets().add(getClass().getResource("/applicationMain/application.css").toExternalForm());
@@ -643,14 +661,17 @@ public class ViewRole1Home {
 	    		
 	            if (!result.isEmpty() && result.get() == ButtonType.YES) {
 	                theDatabase.deletePost(p.getPostID());
-	                //set the objects value to deleted as well 
+	                
+	                //!!set the objects value to deleted as well 
 	                p.setDeleted(true);
+	                
 	                stage.close();
 	                refreshPostFeed(postFeed, "", "");
 	            }
 	        });
 	        buttons.getChildren().add(button_Delete);
 	    }
+	    
 	    //Show Reply button only if the post is not deleted
 	    if (!p.getDeleted()) {
 	        Button button_Reply = new Button("Reply");
@@ -673,7 +694,7 @@ public class ViewRole1Home {
 	            
 	            Optional<String> result = Dialog_reply.showAndWait();
 	            
-	            //trim and validate the reply is <= 500
+	            //!!trim and validate the reply is <= 500
 	            result.ifPresent(content -> {
 	            	String trimmed = content.trim();
 	                if (trimmed.isEmpty()) {
@@ -690,6 +711,7 @@ public class ViewRole1Home {
 	        buttons.getChildren().add(button_Reply);
 	    }
 	    
+	    // Only author can update a post
 	    if (theUser.getUserName().equals(p.getAuthor())) {
 
 	        Button button_update = new Button("Edit");
@@ -753,7 +775,7 @@ public class ViewRole1Home {
 	                return;
 	            }
 
-	            // update database
+	            // !!update database
 	            try {
 					theDatabase.updatePost(p.getPostID(), newTitle, newContent);
 				} catch (SQLException e1) {
@@ -767,6 +789,8 @@ public class ViewRole1Home {
 	        buttons.getChildren().add(button_update);
 	    }
 
+	    // !! filter showing all posts or just unread posts
+	    
 	    layout.getChildren().addAll(postContent, postTime, buttons);
 	    VBox replyList = new VBox(5);
 	    List<reply> allReplies = theDatabase.getRepliesForPost(p.getPostID());
@@ -791,13 +815,11 @@ public class ViewRole1Home {
 	    	else {
 	    		buildReplyList(replyList, allReplies, unreadReplyIds, p, stage);
 	    	}
-	   		
-	    	
 	    });
 	    
 	    
 	   
-	    
+	   // get all replies for post shown 
 	    for(reply r : allReplies) {
 	    	if(!theDatabase.isReplyRead(theUser.getUserName(),r.getReplyID())) {
 	    		unreadReplyIds.add(r.getReplyID());
